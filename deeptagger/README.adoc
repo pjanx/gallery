@@ -1,0 +1,25 @@
+deeptagger
+==========
+
+This is an automatic image tagger/classifier written in C++,
+without using any Python, and primarily targets various anime models.
+
+Unfortunately, you will still need Python and some luck to prepare the models,
+achieved by running download.sh.  You will need about 20 gigabytes of space.
+
+Very little effort is made to make this work on non-Unix systems.
+
+Getting this to work
+--------------------
+To build the evaluator, install a C++ compiler, CMake, and development packages
+of GraphicsMagick and ONNX Runtime.
+
+Prebuilt ONNX Runtime can be most conveniently downloaded from
+https://github.com/microsoft/onnxruntime/releases[GitHub releases].
+Remember to install CUDA packages, such as _nvidia-cudnn_ on Debian,
+if you plan on using the GPU-enabled options.
+
+ $ cmake -DONNXRuntime_ROOT=/path/to/onnxruntime -B build
+ $ cmake --build build
+ $ ./download.sh
+ $ build/deeptagger models/deepdanbooru-v3-20211112-sgd-e28.model image.jpg
