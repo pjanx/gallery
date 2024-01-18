@@ -598,7 +598,11 @@ infer(Ort::Env &env, const char *path, const std::vector<std::string> &images)
 	Thumbnailing ctx;
 	for (const auto &path : images)
 		ctx.input.push(path);
-	for (auto i = g.batch; i--; )
+
+	auto workers = g.batch;
+	if (auto threads = std::thread::hardware_concurrency())
+		workers = std::min(workers, long(threads));
+	for (auto i = workers; i--; )
 		std::thread(thumbnail, std::ref(config), *width, *height,
 			std::ref(ctx)).detach();
 
@@ -610,7 +614,7 @@ infer(Ort::Env &env, const char *path, const std::vector<std::string> &images)
 
 		std::unique_lock<std::mutex> output_lock(ctx.output_mutex);
 		ctx.output_cv.wait(output_lock,
-			[&]{ return ctx.output.size() == g.batch || ctx.done == g.batch; });
+			[&]{ return ctx.output.size() == g.batch || ctx.done == workers; });
 
 		// It would be possible to add dummy entries to the batch,
 		// so that the model doesn't need to be rebuilt.
@@ -618,7 +622,7 @@ infer(Ort::Env &env, const char *path, const std::vector<std::string> &images)
 			run(ctx.output, config, session, shape);
 			ctx.output.clear();
 		}
-		if (ctx.done == g.batch)
+		if (ctx.done == workers)
 			break;
 	}
 }
