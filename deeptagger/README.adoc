@@ -2,24 +2,129 @@ deeptagger
 ==========
 
 This is an automatic image tagger/classifier written in C++,
-without using any Python, and primarily targets various anime models.
+primarily targeting various anime models.
 
-Unfortunately, you will still need Python and some luck to prepare the models,
-achieved by running download.sh.  You will need about 20 gigabytes of space.
+Unfortunately, you will still need Python 3, as well as some luck, to prepare
+the models, achieved by running download.sh.  You will need about 20 gigabytes
+of space for this operation.
 
-Very little effort is made to make this work on non-Unix systems.
+"WaifuDiffusion v1.4" models are officially distributed with ONNX model exports
+that do not support symbolic batch sizes.  The script attempts to fix this
+by running custom exports.
 
-Getting this to work
---------------------
+You're invited to change things to suit your particular needs.
+
+Getting it to work
+------------------
 To build the evaluator, install a C++ compiler, CMake, and development packages
 of GraphicsMagick and ONNX Runtime.
 
 Prebuilt ONNX Runtime can be most conveniently downloaded from
 https://github.com/microsoft/onnxruntime/releases[GitHub releases].
-Remember to install CUDA packages, such as _nvidia-cudnn_ on Debian,
+Remember to also install CUDA packages, such as _nvidia-cudnn_ on Debian,
 if you plan on using the GPU-enabled options.
 
  $ cmake -DONNXRuntime_ROOT=/path/to/onnxruntime -B build
  $ cmake --build build
  $ ./download.sh
  $ build/deeptagger models/deepdanbooru-v3-20211112-sgd-e28.model image.jpg
+
+Very little effort is made to make the project compatible with non-POSIX
+systems.
+
+Options
+-------
+--batch 1::
+	This program makes use of batches by decoding and preparing multiple images
+	in parallel before sending them off to models.
+	Batching requires appropriate models.
+--cpu::
+	Force CPU inference, which is usually extremely slow.
+--debug::
+	Increase verbosity.
+--options "CUDAExecutionProvider;device_id=0"::
+	Set various ONNX Runtime execution provider options.
+--pipe::
+	Take input filenames from the standard input.
+--threshold 0.1::
+	Output weight threshold.  Needs to be set very high on ML-Danbooru models.
+
+Model benchmarks
+----------------
+These were measured on a machine with GeForce RTX 4090 (24G),
+and Ryzen 9 7950X3D (32 threads), on a sample of 704 images,
+which took over eight hours.
+
+There is room for further performance tuning.
+
+GPU inference
+~~~~~~~~~~~~~
+[cols="<,>,>", options=header]
+|===
+|Model|Batch size|Time
+|ML-Danbooru Caformer dec-5-97527|16|OOM
+|WD v1.4 ViT v2 (batch)|16|19 s
+|DeepDanbooru|16|21 s
+|WD v1.4 SwinV2 v2 (batch)|16|21 s
+|WD v1.4 ViT v2 (batch)|4|27 s
+|WD v1.4 SwinV2 v2 (batch)|4|30 s
+|DeepDanbooru|4|31 s
+|ML-Danbooru TResNet-D 6-30000|16|31 s
+|WD v1.4 MOAT v2 (batch)|16|31 s
+|WD v1.4 ConvNeXT v2 (batch)|16|32 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|16|36 s
+|ML-Danbooru TResNet-D 6-30000|4|39 s
+|WD v1.4 ConvNeXT v2 (batch)|4|39 s
+|WD v1.4 MOAT v2 (batch)|4|39 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|4|43 s
+|WD v1.4 ViT v2|1|43 s
+|WD v1.4 ViT v2 (batch)|1|43 s
+|ML-Danbooru Caformer dec-5-97527|4|48 s
+|DeepDanbooru|1|53 s
+|WD v1.4 MOAT v2|1|53 s
+|WD v1.4 ConvNeXT v2|1|54 s
+|WD v1.4 MOAT v2 (batch)|1|54 s
+|WD v1.4 SwinV2 v2|1|54 s
+|WD v1.4 SwinV2 v2 (batch)|1|54 s
+|WD v1.4 ConvNeXT v2 (batch)|1|56 s
+|WD v1.4 ConvNeXTV2 v2|1|56 s
+|ML-Danbooru TResNet-D 6-30000|1|58 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|1|58 s
+|ML-Danbooru Caformer dec-5-97527|1|73 s
+|===
+
+CPU inference
+~~~~~~~~~~~~~
+[cols="<,>,>", options=header]
+|===
+|Model|Batch size|Time
+|DeepDanbooru|16|45 s
+|DeepDanbooru|4|54 s
+|DeepDanbooru|1|88 s
+|ML-Danbooru TResNet-D 6-30000|4|139 s
+|ML-Danbooru TResNet-D 6-30000|16|162 s
+|ML-Danbooru TResNet-D 6-30000|1|167 s
+|WD v1.4 ConvNeXT v2|1|208 s
+|WD v1.4 ConvNeXT v2 (batch)|4|226 s
+|WD v1.4 ConvNeXT v2 (batch)|16|238 s
+|WD v1.4 ConvNeXTV2 v2|1|245 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|4|268 s
+|WD v1.4 ViT v2 (batch)|16|270 s
+|WD v1.4 ConvNeXT v2 (batch)|1|272 s
+|WD v1.4 SwinV2 v2 (batch)|4|277 s
+|WD v1.4 ViT v2 (batch)|4|277 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|16|294 s
+|WD v1.4 SwinV2 v2 (batch)|1|300 s
+|WD v1.4 SwinV2 v2|1|302 s
+|WD v1.4 SwinV2 v2 (batch)|16|305 s
+|WD v1.4 MOAT v2 (batch)|4|307 s
+|WD v1.4 ViT v2|1|308 s
+|WD v1.4 ViT v2 (batch)|1|311 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|1|312 s
+|WD v1.4 MOAT v2|1|332 s
+|WD v1.4 MOAT v2 (batch)|16|335 s
+|WD v1.4 MOAT v2 (batch)|1|339 s
+|ML-Danbooru Caformer dec-5-97527|4|637 s
+|ML-Danbooru Caformer dec-5-97527|16|689 s
+|ML-Danbooru Caformer dec-5-97527|1|829 s
+|===
