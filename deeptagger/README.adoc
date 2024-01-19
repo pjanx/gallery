@@ -142,7 +142,7 @@ The kernel panic was repeatable.
 
 GPU inference
 ~~~~~~~~~~~~~
-[cols="<,>,>", options=header]
+[cols="<2,>1,>1", options=header]
 |===
 |Model|Batch size|Time
 |DeepDanbooru|1|24 s
@@ -177,7 +177,7 @@ GPU inference
 
 CPU inference
 ~~~~~~~~~~~~~
-[cols="<,>,>", options=header]
+[cols="<2,>1,>1", options=header]
 |===
 |Model|Batch size|Time
 |DeepDanbooru|8|54 s
@@ -209,4 +209,20 @@ CPU inference
 |ML-Danbooru Caformer dec-5-97527|4|241 s
 |ML-Danbooru Caformer dec-5-97527|8|241 s
 |ML-Danbooru Caformer dec-5-97527|1|262 s
+|===
+
+Comparison with WDMassTagger
+----------------------------
+Using CUDA, on the same Linux computer as above, on a sample of 6352 images.
+We're a bit slower, depending on the model.
+Batch sizes of 16 and 32 give practically equivalent results for both.
+
+[cols="<,>,>,>", options="header,autowidth"]
+|===
+|Model|WDMassTagger|deeptagger (batch)|Ratio
+|wd-v1-4-convnext-tagger-v2   |1:18 |1:55 |68 %
+|wd-v1-4-convnextv2-tagger-v2 |1:20 |2:10 |62 %
+|wd-v1-4-moat-tagger-v2       |1:22 |1:52 |73 %
+|wd-v1-4-swinv2-tagger-v2     |1:28 |1:34 |94 %
+|wd-v1-4-vit-tagger-v2        |1:16 |1:22 |93 %
 |===
