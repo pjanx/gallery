@@ -49,11 +49,11 @@ Options
 --threshold 0.1::
 	Output weight threshold.  Needs to be set very high on ML-Danbooru models.
 
-Model benchmarks
-----------------
-These were measured on a machine with GeForce RTX 4090 (24G),
+Model benchmarks (Linux)
+------------------------
+These were measured with ORT 1.16.3 on a machine with GeForce RTX 4090 (24G),
 and Ryzen 9 7950X3D (32 threads), on a sample of 704 images,
-which took over eight hours.
+which took over eight hours.  Times include model loading.
 
 There is room for further performance tuning.
 
@@ -127,4 +127,86 @@ CPU inference
 |ML-Danbooru Caformer dec-5-97527|4|637 s
 |ML-Danbooru Caformer dec-5-97527|16|689 s
 |ML-Danbooru Caformer dec-5-97527|1|829 s
+|===
+
+Model benchmarks (macOS)
+------------------------
+These were measured with ORT 1.16.3 on a MacBook Pro, M1 Pro (16GB),
+macOS Ventura 13.6.2, on a sample of 179 images.  Times include model loading.
+
+There was often significant memory pressure and swapping,
+which may explain some of the anomalies.  CoreML often makes things worse,
+and generally consumes a lot more memory than pure CPU execution.
+
+The kernel panic was repeatable.
+
+GPU inference
+~~~~~~~~~~~~~
+[cols="<,>,>", options=header]
+|===
+|Model|Batch size|Time
+|DeepDanbooru|1|24 s
+|DeepDanbooru|8|31 s
+|DeepDanbooru|4|33 s
+|WD v1.4 SwinV2 v2 (batch)|4|71 s
+|WD v1.4 SwinV2 v2 (batch)|1|76 s
+|WD v1.4 ViT v2 (batch)|4|97 s
+|WD v1.4 ViT v2 (batch)|8|97 s
+|ML-Danbooru TResNet-D 6-30000|8|100 s
+|ML-Danbooru TResNet-D 6-30000|4|101 s
+|WD v1.4 ViT v2 (batch)|1|105 s
+|ML-Danbooru TResNet-D 6-30000|1|125 s
+|WD v1.4 ConvNeXT v2 (batch)|8|126 s
+|WD v1.4 SwinV2 v2 (batch)|8|127 s
+|WD v1.4 ConvNeXT v2 (batch)|4|128 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|8|132 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|4|133 s
+|WD v1.4 ViT v2|1|146 s
+|WD v1.4 ConvNeXT v2 (batch)|1|149 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|1|160 s
+|WD v1.4 MOAT v2 (batch)|1|165 s
+|WD v1.4 SwinV2 v2|1|166 s
+|WD v1.4 ConvNeXT v2|1|273 s
+|WD v1.4 MOAT v2|1|273 s
+|WD v1.4 ConvNeXTV2 v2|1|340 s
+|ML-Danbooru Caformer dec-5-97527|1|551 s
+|ML-Danbooru Caformer dec-5-97527|4|swap hell
+|ML-Danbooru Caformer dec-5-97527|8|swap hell
+|WD v1.4 MOAT v2 (batch)|4|kernel panic
+|===
+
+CPU inference
+~~~~~~~~~~~~~
+[cols="<,>,>", options=header]
+|===
+|Model|Batch size|Time
+|DeepDanbooru|8|54 s
+|DeepDanbooru|4|55 s
+|DeepDanbooru|1|75 s
+|WD v1.4 SwinV2 v2 (batch)|8|93 s
+|WD v1.4 SwinV2 v2 (batch)|4|94 s
+|ML-Danbooru TResNet-D 6-30000|8|97 s
+|WD v1.4 SwinV2 v2 (batch)|1|98 s
+|ML-Danbooru TResNet-D 6-30000|4|99 s
+|WD v1.4 SwinV2 v2|1|99 s
+|WD v1.4 ViT v2 (batch)|4|111 s
+|WD v1.4 ViT v2 (batch)|8|111 s
+|WD v1.4 ViT v2 (batch)|1|113 s
+|WD v1.4 ViT v2|1|113 s
+|ML-Danbooru TResNet-D 6-30000|1|118 s
+|WD v1.4 ConvNeXT v2 (batch)|8|124 s
+|WD v1.4 ConvNeXT v2 (batch)|4|125 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|8|129 s
+|WD v1.4 ConvNeXT v2|1|130 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|4|131 s
+|WD v1.4 MOAT v2 (batch)|8|134 s
+|WD v1.4 ConvNeXTV2 v2|1|136 s
+|WD v1.4 MOAT v2 (batch)|4|136 s
+|WD v1.4 ConvNeXT v2 (batch)|1|146 s
+|WD v1.4 MOAT v2 (batch)|1|156 s
+|WD v1.4 MOAT v2|1|156 s
+|WD v1.4 ConvNeXTV2 v2 (batch)|1|157 s
+|ML-Danbooru Caformer dec-5-97527|4|241 s
+|ML-Danbooru Caformer dec-5-97527|8|241 s
+|ML-Danbooru Caformer dec-5-97527|1|262 s
 |===
