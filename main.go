@@ -2390,14 +2390,29 @@ func cmdDhash(fs *flag.FlagSet, args []string) error {
 		}
 	}
 
-	stmt, err := db.Prepare(`UPDATE image SET dhash = ? WHERE sha1 = ?`)
+	// Commits are very IO-expensive in both WAL and non-WAL SQLite,
+	// so write this in one go. For a middle ground, we could batch the updates.
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Mild hack: upgrade the transaction to a write one straight away,
+	// in order to rule out deadlocks (preventable failure).
+	if _, err := tx.Exec(`END TRANSACTION;
+		BEGIN IMMEDIATE TRANSACTION`); err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(`UPDATE image SET dhash = ? WHERE sha1 = ?`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
 	var mu sync.Mutex
-	return parallelize(hexSHA1, func(sha1 string) (message string, err error) {
+	err = parallelize(hexSHA1, func(sha1 string) (message string, err error) {
 		hash, err := makeDhash(sha1)
 		if errors.Is(err, errIsAnimation) {
 			// Ignoring this common condition.
@@ -2411,6 +2426,10 @@ func cmdDhash(fs *flag.FlagSet, args []string) error {
 		_, err = stmt.Exec(int64(hash), sha1)
 		return "", err
 	})
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // --- Main --------------------------------------------------------------------
