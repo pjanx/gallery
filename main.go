@@ -41,6 +41,9 @@ import (
 	"golang.org/x/image/webp"
 )
 
+// #include <unistd.h>
+import "C"
+
 var (
 	db               *sql.DB // sqlite database
 	galleryDirectory string  // gallery directory
@@ -2176,6 +2179,11 @@ func makeThumbnail(load bool, pathImage, pathThumb string) (
 		return 0, 0, err
 	}
 
+	// This is still too much, but it will be effective enough.
+	memoryLimit := strconv.FormatInt(
+		int64(C.sysconf(C._SC_PHYS_PAGES)*C.sysconf(C._SC_PAGE_SIZE))/
+			int64(len(taskSemaphore)), 10)
+
 	// Create a normalized thumbnail. Since we don't particularly need
 	// any complex processing, such as surrounding metadata,
 	// simply push it through ImageMagick.
@@ -2189,8 +2197,17 @@ func makeThumbnail(load bool, pathImage, pathThumb string) (
 	//
 	// TODO: See if we can optimize resulting WebP animations.
 	// (Do -layers optimize* apply to this format at all?)
-	cmd := exec.Command("magick", "-limit", "thread", "1", pathImage,
-		"-coalesce", "-colorspace", "RGB", "-auto-orient", "-strip",
+	cmd := exec.Command("magick", "-limit", "thread", "1",
+
+		// Do not invite the OOM killer, a particularly unpleasant guest.
+		"-limit", "memory", memoryLimit,
+
+		// ImageMagick creates files in /tmp, but that tends to be a tmpfs,
+		// which is backed by memory. The path could also be moved elsewhere:
+		// -define registry:temporary-path=/var/tmp
+		"-limit", "map", "0", "-limit", "disk", "0",
+
+		pathImage, "-coalesce", "-colorspace", "RGB", "-auto-orient", "-strip",
 		"-resize", "256x128>", "-colorspace", "sRGB",
 		"-format", "%w %h", "+write", pathThumb, "-delete", "1--1", "info:")
 
@@ -2478,6 +2495,8 @@ func usage() {
 }
 
 func main() {
+	threads := flag.Int("threads", -1, "level of parallelization")
+
 	// This implements the -h switch for us by default.
 	// The rest of the handling here closely follows what flag does internally.
 	flag.Usage = usage
@@ -2503,7 +2522,12 @@ func main() {
 		fs.PrintDefaults()
 	}
 
-	taskSemaphore = newSemaphore(runtime.NumCPU())
+	if *threads > 0 {
+		taskSemaphore = newSemaphore(*threads)
+	} else {
+		taskSemaphore = newSemaphore(runtime.NumCPU())
+	}
+
 	err := cmd.handler(fs, flag.Args()[1:])
 
 	// Note that the database object has a closing finalizer,
