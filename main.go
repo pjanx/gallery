@@ -1415,7 +1415,11 @@ func syncPostProcess(c *syncContext, info syncFileInfo) error {
 	case info.err != nil:
 		// * → error
 		if ee, ok := info.err.(*exec.ExitError); ok {
-			syncPrintf(c, "%s: %s", info.fsPath, ee.Stderr)
+			message := string(ee.Stderr)
+			if message == "" {
+				message = ee.String()
+			}
+			syncPrintf(c, "%s: %s", info.fsPath, message)
 		} else {
 			return info.err
 		}
@@ -2237,7 +2241,10 @@ func cmdThumbnail(fs *flag.FlagSet, args []string) error {
 		w, h, err := makeThumbnail(*load, pathImage, pathThumb)
 		if err != nil {
 			if ee, ok := err.(*exec.ExitError); ok {
-				return string(ee.Stderr), nil
+				if message = string(ee.Stderr); message != "" {
+					return message, nil
+				}
+				return ee.String(), nil
 			}
 			return "", err
 		}
