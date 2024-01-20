@@ -309,8 +309,8 @@ run(std::vector<Magick::Image> &images, const Config &config,
 			if (config.sigmoid)
 				value = 1 / (1 + std::exp(-value));
 			if (value > g.threshold) {
-				printf("%s\t%.2f\t%s\n", images.at(i).fileName().c_str(),
-					value, config.tags.at(t).c_str());
+				printf("%s\t%s\t%.2f\n", images.at(i).fileName().c_str(),
+					config.tags.at(t).c_str(), value);
 			}
 		}
 	}

@@ -2173,7 +2173,7 @@ func makeThumbnail(load bool, pathImage, pathThumb string) (
 	}
 
 	// Create a normalized thumbnail. Since we don't particularly need
-	// any complex processing, such as surrounding of metadata,
+	// any complex processing, such as surrounding metadata,
 	// simply push it through ImageMagick.
 	//
 	//  - http://www.ericbrasseur.org/gamma.html
