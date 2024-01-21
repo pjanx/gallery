@@ -1,3 +1,6 @@
+gallery
+=======
+
 This is gallery software designed to maintain a shadow structure
 of your filesystem, in which you can attach metadata to your media,
 and query your collections in various ways.
@@ -11,4 +14,4 @@ The gallery is designed for simplicity, and easy interoperability.
 sqlite3, curl, jq, and the filesystem will take you a long way.
 
 The intended mode of use is running daily automated sync/thumbnail/dhash/tag
-batches in a cron job, or from a system timer.  See test.sh for usage hints.
+batches in a cron job, or from a system timer.  See _test.sh_ for usage hints.
