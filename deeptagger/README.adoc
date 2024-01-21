@@ -62,16 +62,17 @@ GPU inference
 [cols="<,>,>", options=header]
 |===
 |Model|Batch size|Time
-|ML-Danbooru Caformer dec-5-97527|16|OOM
 |WD v1.4 ViT v2 (batch)|16|19 s
 |DeepDanbooru|16|21 s
 |WD v1.4 SwinV2 v2 (batch)|16|21 s
+|ML-Danbooru Caformer dec-5-97527|16|25 s
 |WD v1.4 ViT v2 (batch)|4|27 s
 |WD v1.4 SwinV2 v2 (batch)|4|30 s
 |DeepDanbooru|4|31 s
 |ML-Danbooru TResNet-D 6-30000|16|31 s
 |WD v1.4 MOAT v2 (batch)|16|31 s
 |WD v1.4 ConvNeXT v2 (batch)|16|32 s
+|ML-Danbooru Caformer dec-5-97527|4|32 s
 |WD v1.4 ConvNeXTV2 v2 (batch)|16|36 s
 |ML-Danbooru TResNet-D 6-30000|4|39 s
 |WD v1.4 ConvNeXT v2 (batch)|4|39 s
@@ -79,7 +80,7 @@ GPU inference
 |WD v1.4 ConvNeXTV2 v2 (batch)|4|43 s
 |WD v1.4 ViT v2|1|43 s
 |WD v1.4 ViT v2 (batch)|1|43 s
-|ML-Danbooru Caformer dec-5-97527|4|48 s
+|ML-Danbooru Caformer dec-5-97527|1|52 s
 |DeepDanbooru|1|53 s
 |WD v1.4 MOAT v2|1|53 s
 |WD v1.4 ConvNeXT v2|1|54 s
@@ -90,7 +91,6 @@ GPU inference
 |WD v1.4 ConvNeXTV2 v2|1|56 s
 |ML-Danbooru TResNet-D 6-30000|1|58 s
 |WD v1.4 ConvNeXTV2 v2 (batch)|1|58 s
-|ML-Danbooru Caformer dec-5-97527|1|73 s
 |===
 
 CPU inference
@@ -110,6 +110,7 @@ CPU inference
 |WD v1.4 ConvNeXTV2 v2|1|245 s
 |WD v1.4 ConvNeXTV2 v2 (batch)|4|268 s
 |WD v1.4 ViT v2 (batch)|16|270 s
+|ML-Danbooru Caformer dec-5-97527|4|270 s
 |WD v1.4 ConvNeXT v2 (batch)|1|272 s
 |WD v1.4 SwinV2 v2 (batch)|4|277 s
 |WD v1.4 ViT v2 (batch)|4|277 s
@@ -117,6 +118,7 @@ CPU inference
 |WD v1.4 SwinV2 v2 (batch)|1|300 s
 |WD v1.4 SwinV2 v2|1|302 s
 |WD v1.4 SwinV2 v2 (batch)|16|305 s
+|ML-Danbooru Caformer dec-5-97527|16|305 s
 |WD v1.4 MOAT v2 (batch)|4|307 s
 |WD v1.4 ViT v2|1|308 s
 |WD v1.4 ViT v2 (batch)|1|311 s
@@ -124,9 +126,7 @@ CPU inference
 |WD v1.4 MOAT v2|1|332 s
 |WD v1.4 MOAT v2 (batch)|16|335 s
 |WD v1.4 MOAT v2 (batch)|1|339 s
-|ML-Danbooru Caformer dec-5-97527|4|637 s
-|ML-Danbooru Caformer dec-5-97527|16|689 s
-|ML-Danbooru Caformer dec-5-97527|1|829 s
+|ML-Danbooru Caformer dec-5-97527|1|352 s
 |===
 
 Model benchmarks (macOS)
@@ -166,12 +166,12 @@ GPU inference
 |WD v1.4 ConvNeXTV2 v2 (batch)|1|160 s
 |WD v1.4 MOAT v2 (batch)|1|165 s
 |WD v1.4 SwinV2 v2|1|166 s
+|ML-Danbooru Caformer dec-5-97527|1|263 s
 |WD v1.4 ConvNeXT v2|1|273 s
 |WD v1.4 MOAT v2|1|273 s
 |WD v1.4 ConvNeXTV2 v2|1|340 s
-|ML-Danbooru Caformer dec-5-97527|1|551 s
-|ML-Danbooru Caformer dec-5-97527|4|swap hell
-|ML-Danbooru Caformer dec-5-97527|8|swap hell
+|ML-Danbooru Caformer dec-5-97527|4|445 s
+|ML-Danbooru Caformer dec-5-97527|8|1790 s
 |WD v1.4 MOAT v2 (batch)|4|kernel panic
 |===
 
@@ -189,11 +189,14 @@ CPU inference
 |WD v1.4 SwinV2 v2 (batch)|1|98 s
 |ML-Danbooru TResNet-D 6-30000|4|99 s
 |WD v1.4 SwinV2 v2|1|99 s
+|ML-Danbooru Caformer dec-5-97527|4|110 s
+|ML-Danbooru Caformer dec-5-97527|8|110 s
 |WD v1.4 ViT v2 (batch)|4|111 s
 |WD v1.4 ViT v2 (batch)|8|111 s
 |WD v1.4 ViT v2 (batch)|1|113 s
 |WD v1.4 ViT v2|1|113 s
 |ML-Danbooru TResNet-D 6-30000|1|118 s
+|ML-Danbooru Caformer dec-5-97527|1|122 s
 |WD v1.4 ConvNeXT v2 (batch)|8|124 s
 |WD v1.4 ConvNeXT v2 (batch)|4|125 s
 |WD v1.4 ConvNeXTV2 v2 (batch)|8|129 s
@@ -206,9 +209,6 @@ CPU inference
 |WD v1.4 MOAT v2 (batch)|1|156 s
 |WD v1.4 MOAT v2|1|156 s
 |WD v1.4 ConvNeXTV2 v2 (batch)|1|157 s
-|ML-Danbooru Caformer dec-5-97527|4|241 s
-|ML-Danbooru Caformer dec-5-97527|8|241 s
-|ML-Danbooru Caformer dec-5-97527|1|262 s
 |===
 
 Comparison with WDMassTagger
