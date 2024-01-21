@@ -47,7 +47,18 @@ Options
 --pipe::
 	Take input filenames from the standard input.
 --threshold 0.1::
-	Output weight threshold.  Needs to be set very high on ML-Danbooru models.
+	Output weight threshold.  Needs to be set higher on ML-Danbooru models.
+
+Tagging galleries
+-----------------
+The appropriate invocation depends on your machine, and the chosen model.
+Unless you have a powerful machine, or use a fast model, it may take forever.
+
+ $ find "$GALLERY/images" -type f \
+   | build/deeptagger --pipe -b 16 -t 0.5 \
+     models/ml_caformer_m36_dec-5-97527.model \
+   | sed 's|[^\t]*/||' \
+   | gallery tag "$GALLERY" caformer "ML-Danbooru CAFormer"
 
 Model benchmarks (Linux)
 ------------------------
@@ -65,14 +76,14 @@ GPU inference
 |WD v1.4 ViT v2 (batch)|16|19 s
 |DeepDanbooru|16|21 s
 |WD v1.4 SwinV2 v2 (batch)|16|21 s
-|ML-Danbooru Caformer dec-5-97527|16|25 s
+|ML-Danbooru CAFormer dec-5-97527|16|25 s
 |WD v1.4 ViT v2 (batch)|4|27 s
 |WD v1.4 SwinV2 v2 (batch)|4|30 s
 |DeepDanbooru|4|31 s
 |ML-Danbooru TResNet-D 6-30000|16|31 s
 |WD v1.4 MOAT v2 (batch)|16|31 s
 |WD v1.4 ConvNeXT v2 (batch)|16|32 s
-|ML-Danbooru Caformer dec-5-97527|4|32 s
+|ML-Danbooru CAFormer dec-5-97527|4|32 s
 |WD v1.4 ConvNeXTV2 v2 (batch)|16|36 s
 |ML-Danbooru TResNet-D 6-30000|4|39 s
 |WD v1.4 ConvNeXT v2 (batch)|4|39 s
@@ -80,7 +91,7 @@ GPU inference
 |WD v1.4 ConvNeXTV2 v2 (batch)|4|43 s
 |WD v1.4 ViT v2|1|43 s
 |WD v1.4 ViT v2 (batch)|1|43 s
-|ML-Danbooru Caformer dec-5-97527|1|52 s
+|ML-Danbooru CAFormer dec-5-97527|1|52 s
 |DeepDanbooru|1|53 s
 |WD v1.4 MOAT v2|1|53 s
 |WD v1.4 ConvNeXT v2|1|54 s
@@ -110,7 +121,7 @@ CPU inference
 |WD v1.4 ConvNeXTV2 v2|1|245 s
 |WD v1.4 ConvNeXTV2 v2 (batch)|4|268 s
 |WD v1.4 ViT v2 (batch)|16|270 s
-|ML-Danbooru Caformer dec-5-97527|4|270 s
+|ML-Danbooru CAFormer dec-5-97527|4|270 s
 |WD v1.4 ConvNeXT v2 (batch)|1|272 s
 |WD v1.4 SwinV2 v2 (batch)|4|277 s
 |WD v1.4 ViT v2 (batch)|4|277 s
@@ -118,7 +129,7 @@ CPU inference
 |WD v1.4 SwinV2 v2 (batch)|1|300 s
 |WD v1.4 SwinV2 v2|1|302 s
 |WD v1.4 SwinV2 v2 (batch)|16|305 s
-|ML-Danbooru Caformer dec-5-97527|16|305 s
+|ML-Danbooru CAFormer dec-5-97527|16|305 s
 |WD v1.4 MOAT v2 (batch)|4|307 s
 |WD v1.4 ViT v2|1|308 s
 |WD v1.4 ViT v2 (batch)|1|311 s
@@ -126,7 +137,7 @@ CPU inference
 |WD v1.4 MOAT v2|1|332 s
 |WD v1.4 MOAT v2 (batch)|16|335 s
 |WD v1.4 MOAT v2 (batch)|1|339 s
-|ML-Danbooru Caformer dec-5-97527|1|352 s
+|ML-Danbooru CAFormer dec-5-97527|1|352 s
 |===
 
 Model benchmarks (macOS)
@@ -166,12 +177,12 @@ GPU inference
 |WD v1.4 ConvNeXTV2 v2 (batch)|1|160 s
 |WD v1.4 MOAT v2 (batch)|1|165 s
 |WD v1.4 SwinV2 v2|1|166 s
-|ML-Danbooru Caformer dec-5-97527|1|263 s
+|ML-Danbooru CAFormer dec-5-97527|1|263 s
 |WD v1.4 ConvNeXT v2|1|273 s
 |WD v1.4 MOAT v2|1|273 s
 |WD v1.4 ConvNeXTV2 v2|1|340 s
-|ML-Danbooru Caformer dec-5-97527|4|445 s
-|ML-Danbooru Caformer dec-5-97527|8|1790 s
+|ML-Danbooru CAFormer dec-5-97527|4|445 s
+|ML-Danbooru CAFormer dec-5-97527|8|1790 s
 |WD v1.4 MOAT v2 (batch)|4|kernel panic
 |===
 
@@ -189,14 +200,14 @@ CPU inference
 |WD v1.4 SwinV2 v2 (batch)|1|98 s
 |ML-Danbooru TResNet-D 6-30000|4|99 s
 |WD v1.4 SwinV2 v2|1|99 s
-|ML-Danbooru Caformer dec-5-97527|4|110 s
-|ML-Danbooru Caformer dec-5-97527|8|110 s
+|ML-Danbooru CAFormer dec-5-97527|4|110 s
+|ML-Danbooru CAFormer dec-5-97527|8|110 s
 |WD v1.4 ViT v2 (batch)|4|111 s
 |WD v1.4 ViT v2 (batch)|8|111 s
 |WD v1.4 ViT v2 (batch)|1|113 s
 |WD v1.4 ViT v2|1|113 s
 |ML-Danbooru TResNet-D 6-30000|1|118 s
-|ML-Danbooru Caformer dec-5-97527|1|122 s
+|ML-Danbooru CAFormer dec-5-97527|1|122 s
 |WD v1.4 ConvNeXT v2 (batch)|8|124 s
 |WD v1.4 ConvNeXT v2 (batch)|4|125 s
 |WD v1.4 ConvNeXTV2 v2 (batch)|8|129 s

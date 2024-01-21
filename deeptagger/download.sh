@@ -157,7 +157,7 @@ wd14 'WD v1.4 SwinV2 v2'     'SmilingWolf/wd-v1-4-swinv2-tagger-v2'
 wd14 'WD v1.4 MOAT v2'       'SmilingWolf/wd-v1-4-moat-tagger-v2'
 
 # As suggested by author https://github.com/IrisRainbowNeko/ML-Danbooru-webui
-mldanbooru 'ML-Danbooru Caformer dec-5-97527' \
+mldanbooru 'ML-Danbooru CAFormer dec-5-97527' \
 	448 'ml_caformer_m36_dec-5-97527.onnx'
 mldanbooru 'ML-Danbooru TResNet-D 6-30000' \
 	640 'TResnet-D-FLq_ema_6-30000.onnx'
