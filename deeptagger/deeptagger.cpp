@@ -116,7 +116,8 @@ read_config(Config &config, const char *path)
 	}
 
 	read_tags(
-		std::filesystem::path(path).replace_extension("tags"), config.tags);
+		std::filesystem::path(path).replace_extension("tags").string(),
+		config.tags);
 }
 
 // --- Data preparation --------------------------------------------------------
@@ -720,7 +721,7 @@ main(int argc, char *argv[])
 	// Load batched images in parallel (the first is for GM, the other for IM).
 	if (g.batch > 1) {
 		auto value = std::to_string(
-			std::max(std::thread::hardware_concurrency() / g.batch, 1L));
+			std::max(long(std::thread::hardware_concurrency()) / g.batch, 1L));
 		setenv("OMP_NUM_THREADS", value.c_str(), true);
 		setenv("MAGICK_THREAD_LIMIT", value.c_str(), true);
 	}

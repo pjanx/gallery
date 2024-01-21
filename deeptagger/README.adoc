@@ -29,8 +29,7 @@ if you plan on using the GPU-enabled options.
  $ ./download.sh
  $ build/deeptagger models/deepdanbooru-v3-20211112-sgd-e28.model image.jpg
 
-Very little effort is made to make the project compatible with non-POSIX
-systems.
+The project requires a POSIX-compatible system to build.
 
 Options
 -------
