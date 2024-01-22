@@ -964,13 +964,6 @@ const searchCTE = `WITH
 		FROM tag_assignment AS ta
 		JOIN image AS i ON i.sha1 = ta.sha1
 		WHERE ta.tag = ?
-	),
-	supertags(tag, space, name) AS (
-		SELECT DISTINCT ta.tag, ts.name, t.name
-		FROM tag_assignment AS ta
-		JOIN matches AS m ON m.sha1 = ta.sha1
-		JOIN tag AS t ON ta.tag = t.id
-		JOIN tag_space AS ts ON ts.id = t.space
 	)
 `
 
@@ -1010,7 +1003,11 @@ type webTagSupertag struct {
 
 func getTagSupertags(tag int64) (result map[int64]*webTagSupertag, err error) {
 	rows, err := db.Query(searchCTE+`
-		SELECT tag, space, name FROM supertags`, tag)
+		SELECT DISTINCT ta.tag, ts.name, t.name
+		FROM tag_assignment AS ta
+		JOIN matches AS m ON m.sha1 = ta.sha1
+		JOIN tag AS t ON ta.tag = t.id
+		JOIN tag_space AS ts ON ts.id = t.space`, tag)
 	if err != nil {
 		return nil, err
 	}
