@@ -317,49 +317,7 @@ func cmdInit(fs *flag.FlagSet, args []string) error {
 	return nil
 }
 
-// --- Web ---------------------------------------------------------------------
-
-var hashRE = regexp.MustCompile(`^/.*?/([0-9a-f]{40})$`)
-var staticHandler http.Handler
-
-var page = template.Must(template.New("/").Parse(`<!DOCTYPE html><html><head>
-	<title>Gallery</title>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel=stylesheet href=style.css>
-</head><body>
-	<noscript>This is a web application, and requires Javascript.</noscript>
-	<script src=mithril.js></script>
-	<script src=gallery.js></script>
-</body></html>`))
-
-func handleRequest(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		staticHandler.ServeHTTP(w, r)
-		return
-	}
-	if err := page.Execute(w, nil); err != nil {
-		log.Println(err)
-	}
-}
-
-func handleImages(w http.ResponseWriter, r *http.Request) {
-	if m := hashRE.FindStringSubmatch(r.URL.Path); m == nil {
-		http.NotFound(w, r)
-	} else {
-		http.ServeFile(w, r, imagePath(m[1]))
-	}
-}
-
-func handleThumbs(w http.ResponseWriter, r *http.Request) {
-	if m := hashRE.FindStringSubmatch(r.URL.Path); m == nil {
-		http.NotFound(w, r)
-	} else {
-		http.ServeFile(w, r, thumbPath(m[1]))
-	}
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// --- API: Browse -------------------------------------------------------------
 
 func getSubdirectories(tx *sql.Tx, parent int64) (names []string, err error) {
 	return dbCollectStrings(`SELECT name FROM node
@@ -439,7 +397,7 @@ func handleAPIBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// --- API: Tags ---------------------------------------------------------------
 
 type webTagNamespace struct {
 	Description string           `json:"description"`
@@ -525,7 +483,7 @@ func handleAPITags(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// --- API: Duplicates ---------------------------------------------------------
 
 type webDuplicateImage struct {
 	SHA1       string `json:"sha1"`
@@ -668,7 +626,7 @@ func handleAPIDuplicates(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// --- API: Orphans ------------------------------------------------------------
 
 type webOrphanImage struct {
 	SHA1   string `json:"sha1"`
@@ -765,7 +723,7 @@ func handleAPIOrphans(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// --- API: Image view ---------------------------------------------------------
 
 func getImageDimensions(sha1 string) (w int64, h int64, err error) {
 	err = db.QueryRow(`SELECT width, height FROM image WHERE sha1 = ?`,
@@ -868,7 +826,7 @@ func handleAPIInfo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// --- API: Image similar ------------------------------------------------------
 
 type webSimilarImage struct {
 	SHA1        string   `json:"sha1"`
@@ -978,8 +936,8 @@ func handleAPISimilar(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// This is the most miserable part of the whole program.
+// --- API: Search -------------------------------------------------------------
+// The SQL building is the most miserable part of the whole program.
 
 const searchCTE1 = `WITH
 	matches(sha1, thumbw, thumbh, score) AS (
@@ -992,18 +950,18 @@ const searchCTE1 = `WITH
 
 const searchCTEMulti = `WITH
 	positive(tag) AS (VALUES %s),
-	candidates(sha1) AS (%s),
+	filtered(sha1) AS (%s),
 	matches(sha1, thumbw, thumbh, score) AS (
 		SELECT i.sha1, i.thumbw, i.thumbh,
 			product(IFNULL(ta.weight, 0)) AS score
 		FROM image AS i, positive AS p
-		JOIN candidates AS c ON i.sha1 = c.sha1
+		JOIN filtered AS c ON i.sha1 = c.sha1
 		LEFT JOIN tag_assignment AS ta ON ta.sha1 = i.sha1 AND ta.tag = p.tag
 		GROUP BY i.sha1
 	)
 `
 
-func parseQuery(query string) (string, error) {
+func searchQueryToCTE(tx *sql.Tx, query string) (string, error) {
 	positive, negative := []int64{}, []int64{}
 	for _, word := range strings.Split(query, " ") {
 		if word == "" {
@@ -1019,7 +977,7 @@ func parseQuery(query string) (string, error) {
 		}
 
 		var tagID int64
-		err := db.QueryRow(`
+		err := tx.QueryRow(`
 			SELECT t.id FROM tag AS t
 			JOIN tag_space AS ts ON t.space = ts.id
 			WHERE ts.name = ? AND t.name = ?`, space, tag).Scan(&tagID)
@@ -1045,19 +1003,19 @@ func parseQuery(query string) (string, error) {
 	}
 
 	values := fmt.Sprintf(`(%d)`, positive[0])
-	candidates := fmt.Sprintf(
+	filtered := fmt.Sprintf(
 		`SELECT sha1 FROM tag_assignment WHERE tag = %d`, positive[0])
 	for _, tagID := range positive[1:] {
 		values += fmt.Sprintf(`, (%d)`, tagID)
-		candidates += fmt.Sprintf(` INTERSECT
+		filtered += fmt.Sprintf(` INTERSECT
 			SELECT sha1 FROM tag_assignment WHERE tag = %d`, tagID)
 	}
 	for _, tagID := range negative {
-		candidates += fmt.Sprintf(` EXCEPT
+		filtered += fmt.Sprintf(` EXCEPT
 			SELECT sha1 FROM tag_assignment WHERE tag = %d`, tagID)
 	}
 
-	return fmt.Sprintf(searchCTEMulti, values, candidates), nil
+	return fmt.Sprintf(searchCTEMulti, values, filtered), nil
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1069,8 +1027,8 @@ type webTagMatch struct {
 	Score  float32 `json:"score"`
 }
 
-func getTagMatches(cte string) (matches []webTagMatch, err error) {
-	rows, err := db.Query(cte + `
+func getTagMatches(tx *sql.Tx, cte string) (matches []webTagMatch, err error) {
+	rows, err := tx.Query(cte + `
 		SELECT sha1, IFNULL(thumbw, 0), IFNULL(thumbh, 0), score
 		FROM matches`)
 	if err != nil {
@@ -1096,8 +1054,9 @@ type webTagSupertag struct {
 	score float32
 }
 
-func getTagSupertags(cte string) (result map[int64]*webTagSupertag, err error) {
-	rows, err := db.Query(cte + `
+func getTagSupertags(tx *sql.Tx, cte string) (
+	result map[int64]*webTagSupertag, err error) {
+	rows, err := tx.Query(cte + `
 		SELECT DISTINCT ta.tag, ts.name, t.name
 		FROM tag_assignment AS ta
 		JOIN matches AS m ON m.sha1 = ta.sha1
@@ -1127,15 +1086,15 @@ type webTagRelated struct {
 	Score float32 `json:"score"`
 }
 
-func getTagRelated(cte string, matches int) (
+func getTagRelated(tx *sql.Tx, cte string, matches int) (
 	result map[string][]webTagRelated, err error) {
 	// Not sure if this level of efficiency is achievable directly in SQL.
-	supertags, err := getTagSupertags(cte)
+	supertags, err := getTagSupertags(tx, cte)
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := db.Query(cte + `
+	rows, err := tx.Query(cte + `
 		SELECT ta.tag, ta.weight
 		FROM tag_assignment AS ta
 		JOIN matches AS m ON m.sha1 = ta.sha1`)
@@ -1179,7 +1138,14 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 		Related map[string][]webTagRelated `json:"related"`
 	}
 
-	cte, err := parseQuery(params.Query)
+	tx, err := db.Begin()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	cte, err := searchQueryToCTE(tx, params.Query)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -1188,11 +1154,11 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if result.Matches, err = getTagMatches(cte); err != nil {
+	if result.Matches, err = getTagMatches(tx, cte); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if result.Related, err = getTagRelated(cte,
+	if result.Related, err = getTagRelated(tx, cte,
 		len(result.Matches)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -1203,7 +1169,47 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// --- Web ---------------------------------------------------------------------
+
+var hashRE = regexp.MustCompile(`^/.*?/([0-9a-f]{40})$`)
+var staticHandler http.Handler
+
+var page = template.Must(template.New("/").Parse(`<!DOCTYPE html><html><head>
+	<title>Gallery</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel=stylesheet href=style.css>
+</head><body>
+	<noscript>This is a web application, and requires Javascript.</noscript>
+	<script src=mithril.js></script>
+	<script src=gallery.js></script>
+</body></html>`))
+
+func handleRequest(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		staticHandler.ServeHTTP(w, r)
+		return
+	}
+	if err := page.Execute(w, nil); err != nil {
+		log.Println(err)
+	}
+}
+
+func handleImages(w http.ResponseWriter, r *http.Request) {
+	if m := hashRE.FindStringSubmatch(r.URL.Path); m == nil {
+		http.NotFound(w, r)
+	} else {
+		http.ServeFile(w, r, imagePath(m[1]))
+	}
+}
+
+func handleThumbs(w http.ResponseWriter, r *http.Request) {
+	if m := hashRE.FindStringSubmatch(r.URL.Path); m == nil {
+		http.NotFound(w, r)
+	} else {
+		http.ServeFile(w, r, thumbPath(m[1]))
+	}
+}
 
 // cmdWeb runs a web UI against GD on ADDRESS.
 func cmdWeb(fs *flag.FlagSet, args []string) error {
