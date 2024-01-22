@@ -965,22 +965,12 @@ const searchCTE = `WITH
 		JOIN image AS i ON i.sha1 = ta.sha1
 		WHERE ta.tag = ?
 	),
-	supertags(tag) AS (
-		SELECT DISTINCT ta.tag
+	supertags(tag, space, name) AS (
+		SELECT DISTINCT ta.tag, ts.name, t.name
 		FROM tag_assignment AS ta
 		JOIN matches AS m ON m.sha1 = ta.sha1
-	),
-	scoredtags(tag, score) AS (
-		-- The cross join is a deliberate optimization,
-		-- and this query may still be really slow.
-		SELECT st.tag, AVG(IFNULL(ta.weight, 0)) AS score
-		FROM matches AS m
-		CROSS JOIN supertags AS st
-		LEFT JOIN tag_assignment AS ta
-		ON ta.sha1 = m.sha1 AND ta.tag = st.tag
-		GROUP BY st.tag
-		-- Using the column alias doesn't fail, but it also doesn't work.
-		HAVING AVG(IFNULL(ta.weight, 0)) >= 0.01
+		JOIN tag AS t ON ta.tag = t.id
+		JOIN tag_space AS ts ON ts.id = t.space
 	)
 `
 
@@ -1012,32 +1002,73 @@ func getTagMatches(tag int64) (matches []webTagMatch, err error) {
 	return matches, rows.Err()
 }
 
-type webTagRelated struct {
-	Tag   string  `json:"tag"`
-	Score float32 `json:"score"`
+type webTagSupertag struct {
+	space string
+	tag   string
+	score float32
 }
 
-func getTagRelated(tag int64) (result map[string][]webTagRelated, err error) {
+func getTagSupertags(tag int64) (result map[int64]*webTagSupertag, err error) {
 	rows, err := db.Query(searchCTE+`
-		SELECT ts.name, t.name, st.score FROM scoredtags AS st
-		JOIN tag AS t ON st.tag = t.id
-		JOIN tag_space AS ts ON ts.id = t.space
-		ORDER BY st.score DESC`, tag)
+		SELECT tag, space, name FROM supertags`, tag)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	result = make(map[string][]webTagRelated)
+	result = make(map[int64]*webTagSupertag)
 	for rows.Next() {
 		var (
-			space string
-			r     webTagRelated
+			tag int64
+			st  webTagSupertag
 		)
-		if err = rows.Scan(&space, &r.Tag, &r.Score); err != nil {
+		if err = rows.Scan(&tag, &st.space, &st.tag); err != nil {
 			return nil, err
 		}
-		result[space] = append(result[space], r)
+		result[tag] = &st
+	}
+	return result, rows.Err()
+}
+
+type webTagRelated struct {
+	Tag   string  `json:"tag"`
+	Score float32 `json:"score"`
+}
+
+func getTagRelated(tag int64, matches int) (
+	result map[string][]webTagRelated, err error) {
+	// Not sure if this level of efficiency is achievable directly in SQL.
+	supertags, err := getTagSupertags(tag)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.Query(searchCTE+`
+		SELECT ta.tag, ta.weight
+		FROM tag_assignment AS ta
+		JOIN matches AS m ON m.sha1 = ta.sha1`, tag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			tag    int64
+			weight float32
+		)
+		if err = rows.Scan(&tag, &weight); err != nil {
+			return nil, err
+		}
+		supertags[tag].score += weight
+	}
+
+	result = make(map[string][]webTagRelated)
+	for _, info := range supertags {
+		if score := info.score / float32(matches); score >= 0.1 {
+			r := webTagRelated{Tag: info.tag, Score: score}
+			result[info.space] = append(result[info.space], r)
+		}
 	}
 	return result, rows.Err()
 }
@@ -1075,7 +1106,8 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if result.Related, err = getTagRelated(tagID); err != nil {
+	if result.Related, err = getTagRelated(tagID,
+		len(result.Matches)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
