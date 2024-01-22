@@ -646,7 +646,11 @@ let Search = {
 			m(Header),
 			m('.body', {}, [
 				m('.sidebar', [
-					m('p', SearchModel.query),
+					m('input', {
+						value: SearchModel.query,
+						onchange: event => m.route.set(
+							`/search/:key`, {key: event.target.value}),
+					}),
 					m(SearchRelated),
 				]),
 				m(SearchView),

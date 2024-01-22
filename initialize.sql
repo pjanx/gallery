@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS tag_space(
 	id          INTEGER NOT NULL,
 	name        TEXT NOT NULL,
 	description TEXT,
-	CHECK (name NOT LIKE '%:%'),
+	CHECK (name NOT LIKE '%:%' AND name NOT LIKE '-%'),
 	PRIMARY KEY (id)
 ) STRICT;
 
