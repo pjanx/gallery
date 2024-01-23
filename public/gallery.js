@@ -472,13 +472,15 @@ let ViewBar = {
 			m('ul', ViewModel.paths.map(path =>
 				m('li', m(ViewBarPath, {path})))),
 			m('h2', "Tags"),
-			Object.entries(ViewModel.tags).map(([space, tags]) => [
-				m("h3", m(m.route.Link, {href: `/tags/${space}`}, space)),
-				m("ul.tags", Object.entries(tags)
-					.sort(([t1, w1], [t2, w2]) => (w2 - w1))
-					.map(([tag, score]) =>
-						m(ScoredTag, {space, tagname: tag, score}))),
-			]),
+			Object.entries(ViewModel.tags).map(([space, tags]) =>
+				m('details[open]', [
+					m('summary', m("h3",
+						m(m.route.Link, {href: `/tags/${space}`}, space))),
+					m("ul.tags", Object.entries(tags)
+						.sort(([t1, w1], [t2, w2]) => (w2 - w1))
+						.map(([tag, score]) =>
+							m(ScoredTag, {space, tagname: tag, score}))),
+				])),
 		])
 	},
 }
@@ -609,13 +611,14 @@ let SearchRelated = {
 	view(vnode) {
 		return Object.entries(SearchModel.related)
 			.sort((a, b) => a[0].localeCompare(b[0]))
-			.map(([space, tags]) => [
-				m('h2', space),
+			.map(([space, tags]) => m('details[open]', [
+				m('summary', m('h2',
+					m(m.route.Link, {href: `/tags/${space}`}, space))),
 				m('ul.tags', tags
 					.sort((a, b) => (b.score - a.score))
 					.map(({tag, score}) =>
 						m(ScoredTag, {space, tagname: tag, score}))),
-			])
+			]))
 	},
 }
 
