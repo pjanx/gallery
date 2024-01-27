@@ -10,7 +10,7 @@ function call(method, params) {
 	callActive++
 	return m.request({
 		method: "POST",
-		url: `/api/${method}`,
+		url: `api/${method}`,
 		body: params,
 	}).then(result => {
 		callActive--
@@ -98,7 +98,7 @@ let Thumbnail = {
 		if (!e.thumbW || !e.thumbH)
 			return m('.thumbnail.missing', {...vnode.attrs, info: null})
 		return m('img.thumbnail', {...vnode.attrs, info: null,
-			src: `/thumb/${e.sha1}`, width: e.thumbW, height: e.thumbH,
+			src: `thumb/${e.sha1}`, width: e.thumbW, height: e.thumbH,
 			loading})
 	},
 }
@@ -494,7 +494,7 @@ let View = {
 	view(vnode) {
 		const view = m('.view', [
 			ViewModel.sha1 !== undefined
-				? m('img', {src: `/image/${ViewModel.sha1}`,
+				? m('img', {src: `image/${ViewModel.sha1}`,
 					width: ViewModel.width, height: ViewModel.height})
 				: "No image.",
 		])
