@@ -8,7 +8,9 @@ and query your collections in various ways.
 All media is content-addressed by its SHA-1 hash value, and at your option
 also perceptually hashed.  Duplicate search is an essential feature.
 
-Prerequisites: Go, ImageMagick v7, xdg-utils
+Prerequisites: Go, ImageMagick, xdg-utils
+
+ImageMagick v7 is preferred, it doesn't shoot out of memory as often.
 
 The gallery is designed for simplicity, and easy interoperability.
 sqlite3, curl, jq, and the filesystem will take you a long way.

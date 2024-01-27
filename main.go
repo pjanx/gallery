@@ -1377,7 +1377,7 @@ func syncIsImage(path string) (bool, error) {
 }
 
 func syncPingImage(path string) (int, int, error) {
-	out, err := exec.Command("magick", "identify", "-limit", "thread", "1",
+	out, err := exec.Command("identify", "-limit", "thread", "1",
 		"-ping", "-format", "%w %h", path+"[0]").Output()
 	if err != nil {
 		return 0, 0, err
@@ -2321,7 +2321,7 @@ func makeThumbnail(load bool, pathImage, pathThumb string) (
 	//
 	// TODO: See if we can optimize resulting WebP animations.
 	// (Do -layers optimize* apply to this format at all?)
-	cmd := exec.Command("magick", "-limit", "thread", "1",
+	cmd := exec.Command("convert", "-limit", "thread", "1",
 
 		// Do not invite the OOM killer, a particularly unpleasant guest.
 		"-limit", "memory", memoryLimit,
