@@ -8,12 +8,32 @@ and query your collections in various ways.
 All media is content-addressed by its SHA-1 hash value, and at your option
 also perceptually hashed.  Duplicate search is an essential feature.
 
+The gallery is designed for simplicity, and easy interoperability.
+sqlite3, curl, jq, and the filesystem will take you a long way.
+
 Prerequisites: Go, ImageMagick, xdg-utils
 
 ImageMagick v7 is preferred, it doesn't shoot out of memory as often.
 
-The gallery is designed for simplicity, and easy interoperability.
-sqlite3, curl, jq, and the filesystem will take you a long way.
+Getting it to work
+------------------
+ # apt install build-essential git golang imagemagick xdg-utils
+ $ git clone https://git.janouch.name/p/gallery.git
+ $ cd gallery
+ $ make
+ $ ./gallery init G
+ $ ./gallery sync G ~/Pictures
+ $ ./gallery thumbnail G             # parallelized, with memory limits
+ $ ./gallery -threads 1 thumbnail G  # one thread only gets more memory
+ $ ./gallery dhash G
+ $ ./gallery web G :8080
 
 The intended mode of use is running daily automated sync/thumbnail/dhash/tag
-batches in a cron job, or from a system timer.  See _test.sh_ for usage hints.
+batches in a cron job, or from a systemd timer.
+
+The _web_ command needs to see the _public_ directory,
+and is friendly to reverse proxying.
+
+Demo
+----
+https://holedigging.club/gallery/
