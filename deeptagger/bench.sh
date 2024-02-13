@@ -28,11 +28,9 @@ run() {
 for model in models/*.model
 do
 	name=$(sed -n 's/^name=//p' "$model")
-	run ""     1 "$model" "$@"
-	run ""     4 "$model" "$@"
-	run ""    16 "$model" "$@"
-
-	run --cpu  1 "$model" "$@"
-	run --cpu  4 "$model" "$@"
-	run --cpu 16 "$model" "$@"
+	for batch in 1 4 16
+	do
+		run ""    $batch "$model" "$@"
+		run --cpu $batch "$model" "$@"
+	done
 done
