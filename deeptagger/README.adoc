@@ -53,7 +53,7 @@ Tagging galleries
 The appropriate invocation depends on your machine, and the chosen model.
 Unless you have a powerful machine, or use a fast model, it may take forever.
 
- $ find "$GALLERY/images" -type f \
+ $ find "$GALLERY/images" -type l \
    | build/deeptagger --pipe -b 16 -t 0.5 \
      models/ml_caformer_m36_dec-5-97527.model \
    | sed 's|[^\t]*/||' \
