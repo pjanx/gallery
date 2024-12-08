@@ -296,6 +296,9 @@ func cmdInit(fs *flag.FlagSet, args []string) error {
 	if fs.NArg() != 1 {
 		return errWrongUsage
 	}
+	if err := os.MkdirAll(fs.Arg(0), 0755); err != nil {
+		return err
+	}
 	if err := openDB(fs.Arg(0)); err != nil {
 		return err
 	}
