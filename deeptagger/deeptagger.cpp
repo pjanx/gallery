@@ -315,6 +315,7 @@ run(std::vector<Magick::Image> &images, const Config &config,
 			}
 		}
 	}
+	fflush(stdout);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
