@@ -16,6 +16,9 @@ sha1duplicate=$sha1
 cp $input/Test/dhash.png \
 	$input/Test/multiple-paths.png
 
+gen -seed 15 -size 256x256 plasma:fractal \
+	$input/Test/excluded.png
+
 gen -seed 20 -size 160x128 plasma:fractal \
 	-bordercolor transparent -border 64 \
 	$input/Test/transparent-wide.png
@@ -36,7 +39,7 @@ gen $input/Test/animation-small.gif \
 	$input/Test/video.mp4
 
 ./gallery init $target
-./gallery sync $target $input "$@"
+./gallery sync -exclude '/excluded[.]' $target $input "$@"
 ./gallery thumbnail $target
 ./gallery dhash $target
 ./gallery tag $target test "Test space" <<-END
@@ -47,7 +50,7 @@ END
 
 # TODO: Test all the various possible sync transitions.
 mv $input/Test $input/Plasma
-./gallery sync $target $input
+./gallery sync -exclude '/excluded[.]' $target $input
 
 ./gallery web $target :8080 &
 web=$!

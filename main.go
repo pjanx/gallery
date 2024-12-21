@@ -1286,6 +1286,9 @@ type syncContext struct {
 	stmtDisposeSub *sql.Stmt
 	stmtDisposeAll *sql.Stmt
 
+	// exclude specifies filesystem paths that should be seen as missing.
+	exclude *regexp.Regexp
+
 	// linked tracks which image hashes we've checked so far in the run.
 	linked map[string]struct{}
 }
@@ -1694,6 +1697,12 @@ func syncDirectory(c *syncContext, dbParent int64, fsPath string) error {
 		fs = nil
 	}
 
+	if c.exclude != nil {
+		fs = slices.DeleteFunc(fs, func(f syncFile) bool {
+			return c.exclude.MatchString(filepath.Join(fsPath, f.fsName))
+		})
+	}
+
 	// Convert differences to a form more convenient for processing.
 	iDB, iFS, pairs := 0, 0, []syncPair{}
 	for iDB < len(db) && iFS < len(fs) {
@@ -1869,9 +1878,21 @@ const disposeCTE = `WITH RECURSIVE
 		HAVING count = total
 	)`
 
+type excludeRE struct{ re *regexp.Regexp }
+
+func (re *excludeRE) String() string { return fmt.Sprintf("%v", re.re) }
+
+func (re *excludeRE) Set(value string) error {
+	var err error
+	re.re, err = regexp.Compile(value)
+	return err
+}
+
 // cmdSync ensures the given (sub)roots are accurately reflected
 // in the database.
 func cmdSync(fs *flag.FlagSet, args []string) error {
+	var exclude excludeRE
+	fs.Var(&exclude, "exclude", "exclude paths matching regular expression")
 	fullpaths := fs.Bool("fullpaths", false, "don't basename arguments")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -1909,7 +1930,7 @@ func cmdSync(fs *flag.FlagSet, args []string) error {
 	}
 
 	c := syncContext{ctx: ctx, tx: tx, pb: newProgressBar(-1),
-		linked: make(map[string]struct{})}
+		exclude: exclude.re, linked: make(map[string]struct{})}
 	defer c.pb.Stop()
 
 	if c.stmtOrphan, err = c.tx.Prepare(disposeCTE + `
