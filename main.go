@@ -2148,36 +2148,54 @@ func collectFileListing(root string) (paths []string, err error) {
 	return
 }
 
-func checkFiles(root, suffix string, hashes []string) (bool, []string, error) {
+func checkFiles(gc bool,
+	root, suffix string, hashes []string) (bool, []string, error) {
 	db := hashesToFileListing(root, suffix, hashes)
 	fs, err := collectFileListing(root)
 	if err != nil {
 		return false, nil, err
 	}
 
-	iDB, iFS, ok, intersection := 0, 0, true, []string{}
+	// There are two legitimate cases of FS-only database files:
+	//  1. There is no code to unlink images at all
+	//     (although sync should create orphan records for everything).
+	//  2. thumbnail: failures may result in an unreferenced garbage image.
+	ok := true
+	onlyDB := func(path string) {
+		ok = false
+		fmt.Printf("only in DB: %s\n", path)
+	}
+	onlyFS := func(path string) {
+		if !gc {
+			ok = false
+			fmt.Printf("only in FS: %s\n", path)
+		} else if err := os.Remove(path); err != nil {
+			ok = false
+			fmt.Printf("only in FS (removing failed): %s: %s\n", path, err)
+		} else {
+			fmt.Printf("only in FS (removing): %s\n", path)
+		}
+	}
+
+	iDB, iFS, intersection := 0, 0, []string{}
 	for iDB < len(db) && iFS < len(fs) {
 		if db[iDB] == fs[iFS] {
 			intersection = append(intersection, db[iDB])
 			iDB++
 			iFS++
 		} else if db[iDB] < fs[iFS] {
-			ok = false
-			fmt.Printf("only in DB: %s\n", db[iDB])
+			onlyDB(db[iDB])
 			iDB++
 		} else {
-			ok = false
-			fmt.Printf("only in FS: %s\n", fs[iFS])
+			onlyFS(fs[iFS])
 			iFS++
 		}
 	}
 	for _, path := range db[iDB:] {
-		ok = false
-		fmt.Printf("only in DB: %s\n", path)
+		onlyDB(path)
 	}
 	for _, path := range fs[iFS:] {
-		ok = false
-		fmt.Printf("only in FS: %s\n", path)
+		onlyFS(path)
 	}
 	return ok, intersection, nil
 }
@@ -2225,6 +2243,7 @@ func checkHashes(paths []string) (bool, error) {
 // cmdCheck carries out various database consistency checks.
 func cmdCheck(fs *flag.FlagSet, args []string) error {
 	full := fs.Bool("full", false, "verify image hashes")
+	gc := fs.Bool("gc", false, "garbage collect database files")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -2261,13 +2280,13 @@ func cmdCheck(fs *flag.FlagSet, args []string) error {
 
 	// This somewhat duplicates {image,thumb}Path().
 	log.Println("checking SQL against filesystem")
-	okImages, intersection, err := checkFiles(
+	okImages, intersection, err := checkFiles(*gc,
 		filepath.Join(galleryDirectory, nameOfImageRoot), "", allSHA1)
 	if err != nil {
 		return err
 	}
 
-	okThumbs, _, err := checkFiles(
+	okThumbs, _, err := checkFiles(*gc,
 		filepath.Join(galleryDirectory, nameOfThumbRoot), ".webp", thumbSHA1)
 	if err != nil {
 		return err
@@ -2276,11 +2295,11 @@ func cmdCheck(fs *flag.FlagSet, args []string) error {
 		ok = false
 	}
 
-	log.Println("checking for dead symlinks")
+	log.Println("checking for dead symlinks (should become orphans on sync)")
 	for _, path := range intersection {
 		if _, err := os.Stat(path); err != nil {
 			ok = false
-			fmt.Printf("%s: %s\n", path, err)
+			fmt.Printf("%s: %s\n", path, err.(*os.PathError).Unwrap())
 		}
 	}
 
