@@ -2700,6 +2700,9 @@ func main() {
 	// Note that the database object has a closing finalizer,
 	// we just additionally print any errors coming from there.
 	if db != nil {
+		if _, err := db.Exec(`PRAGMA optimize`); err != nil {
+			log.Println(err)
+		}
 		if err := db.Close(); err != nil {
 			log.Println(err)
 		}
