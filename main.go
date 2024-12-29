@@ -2030,6 +2030,88 @@ func cmdRemove(fs *flag.FlagSet, args []string) error {
 	return tx.Commit()
 }
 
+// --- Forgetting --------------------------------------------------------------
+
+// cmdForget is for purging orphaned images from the database.
+func cmdForget(fs *flag.FlagSet, args []string) error {
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() < 2 {
+		return errWrongUsage
+	}
+	if err := openDB(fs.Arg(0)); err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Creating a temporary database seems justifiable in this case.
+	_, err = tx.Exec(
+		`CREATE TEMPORARY TABLE forgotten (sha1 TEXT PRIMARY KEY)`)
+	if err != nil {
+		return err
+	}
+	stmt, err := tx.Prepare(`INSERT INTO forgotten (sha1) VALUES (?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, sha1 := range fs.Args()[1:] {
+		if _, err := stmt.Exec(sha1); err != nil {
+			return err
+		}
+	}
+
+	rows, err := tx.Query(`DELETE FROM forgotten
+		WHERE sha1 IN (SELECT sha1 FROM node)
+		OR sha1 NOT IN (SELECT sha1 FROM image)
+		RETURNING sha1`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var sha1 string
+		if err := rows.Scan(&sha1); err != nil {
+			return err
+		}
+		log.Printf("not an orphan or not known at all: %s", sha1)
+	}
+	if _, err = tx.Exec(`
+		DELETE FROM tag_assignment WHERE sha1 IN (SELECT sha1 FROM forgotten);
+		DELETE FROM orphan WHERE sha1 IN (SELECT sha1 FROM forgotten);
+		DELETE FROM image WHERE sha1 IN (SELECT sha1 FROM forgotten);
+	 `); err != nil {
+		return err
+	}
+
+	rows, err = tx.Query(`SELECT sha1 FROM forgotten`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var sha1 string
+		if err := rows.Scan(&sha1); err != nil {
+			return err
+		}
+		if err := os.Remove(imagePath(sha1)); err != nil &&
+			!os.IsNotExist(err) {
+			log.Printf("%s", err)
+		}
+		if err := os.Remove(thumbPath(sha1)); err != nil &&
+			!os.IsNotExist(err) {
+			log.Printf("%s", err)
+		}
+	}
+	return tx.Commit()
+}
+
 // --- Tagging -----------------------------------------------------------------
 
 // cmdTag mass imports tags from data passed on stdin as a TSV
@@ -2641,6 +2723,7 @@ var commands = map[string]struct {
 	"tag":       {cmdTag, "GD SPACE [DESCRIPTION]", "Import tags."},
 	"sync":      {cmdSync, "GD ROOT...", "Synchronise with the filesystem."},
 	"remove":    {cmdRemove, "GD PATH...", "Remove database subtrees."},
+	"forget":    {cmdForget, "GD SHA1...", "Dispose of orphans."},
 	"check":     {cmdCheck, "GD", "Run consistency checks."},
 	"thumbnail": {cmdThumbnail, "GD [SHA1...]", "Generate thumbnails."},
 	"dhash":     {cmdDhash, "GD [SHA1...]", "Compute perceptual hashes."},
