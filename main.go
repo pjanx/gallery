@@ -845,15 +845,17 @@ type webSimilarImage struct {
 
 func getSimilar(sha1 string, dhash int64, pixels int64, distance int) (
 	result []webSimilarImage, err error) {
-	// For distance ∈ {0, 1}, this query is quite inefficient.
-	// In exchange, it's generic.
-	//
-	// If there's a dhash, there should also be thumbnail dimensions,
-	// so not bothering with IFNULL on them.
-	rows, err := db.Query(`
-		SELECT sha1, width * height, IFNULL(thumbw, 0), IFNULL(thumbh, 0)
-		FROM image WHERE sha1 <> ? AND dhash IS NOT NULL
-		AND hamming(dhash, ?) = ?`, sha1, dhash, distance)
+	// If there's a dhash, there should also be thumbnail dimensions.
+	var rows *sql.Rows
+	common := `SELECT sha1, width * height, IFNULL(thumbw, 0), IFNULL(thumbh, 0)
+		FROM image WHERE sha1 <> ? AND `
+	if distance == 0 {
+		rows, err = db.Query(common+`dhash = ?`, sha1, dhash)
+	} else {
+		// This is generic, but quite inefficient for distance ∈ {0, 1}.
+		rows, err = db.Query(common+`dhash IS NOT NULL
+			AND hamming(dhash, ?) = ?`, sha1, dhash, distance)
+	}
 	if err != nil {
 		return nil, err
 	}
