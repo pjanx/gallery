@@ -658,7 +658,9 @@ func getOrphanReplacement(webPath string) (*webOrphanImage, error) {
 	}
 
 	parent, err := idForDirectoryPath(tx, path[:len(path)-1], false)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 
