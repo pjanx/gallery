@@ -687,7 +687,8 @@ func getOrphans() (result []webOrphan, err error) {
 		FROM orphan AS o
 		JOIN image AS i ON o.sha1 = i.sha1
 		LEFT JOIN tag_assignment AS ta ON o.sha1 = ta.sha1
-		GROUP BY o.sha1`)
+		GROUP BY o.sha1
+		ORDER BY path`)
 	if err != nil {
 		return nil, err
 	}
