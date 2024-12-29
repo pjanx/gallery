@@ -94,10 +94,15 @@ func init() {
 }
 
 func openDB(directory string) error {
+	galleryDirectory = directory
+
 	var err error
 	db, err = sql.Open("sqlite3_custom", "file:"+filepath.Join(directory,
 		nameOfDB+"?_foreign_keys=1&_busy_timeout=1000"))
-	galleryDirectory = directory
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(initializeSQL)
 	return err
 }
 
@@ -300,10 +305,6 @@ func cmdInit(fs *flag.FlagSet, args []string) error {
 		return err
 	}
 	if err := openDB(fs.Arg(0)); err != nil {
-		return err
-	}
-
-	if _, err := db.Exec(initializeSQL); err != nil {
 		return err
 	}
 

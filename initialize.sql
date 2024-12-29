@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS node(
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS node__sha1 ON node(sha1);
+CREATE INDEX IF NOT EXISTS node__parent ON node(parent);
 CREATE UNIQUE INDEX IF NOT EXISTS node__parent_name
 ON node(IFNULL(parent, 0), name);
 
