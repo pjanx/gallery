@@ -732,6 +732,56 @@ func handleAPIOrphans(w http.ResponseWriter, r *http.Request) {
 
 // --- API: Image view ---------------------------------------------------------
 
+func handleAPIOpen(w http.ResponseWriter, r *http.Request) {
+	var params struct {
+		SHA1 string
+	}
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !webSettings.Local {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if !isValidSHA1(params.SHA1) {
+		http.Error(w, "invalid SHA1", http.StatusBadRequest)
+		return
+	}
+
+	// We don't particularly care about all possible paths,
+	// just try not to open the image within our storage directories,
+	// as that could make image viewers create many pointless thumbnails.
+	//
+	// So long as galleryDirectory doesn't start with "-" (on Unix-likes),
+	// the path is safe to pass as an argument to the launcher.
+	path := imagePath(params.SHA1)
+	if link, err := os.Readlink(path); err == nil {
+		if filepath.IsAbs(link) {
+			path = link
+		} else {
+			path = filepath.Join(filepath.Dir(path), link)
+		}
+	}
+
+	for _, launcher := range []string{"explorer.exe", "open", "xdg-open"} {
+		launcher, err := exec.LookPath(launcher)
+		if err != nil {
+			continue
+		}
+
+		// At the cost of not being able to report errors, don't let this block.
+		go func() {
+			if err := exec.Command(launcher, path).Run(); err != nil {
+				log.Printf("%s %s: %s", launcher, path, err.Error())
+			}
+		}()
+		return
+	}
+	http.Error(w, "no launcher", http.StatusInternalServerError)
+}
+
 func getImageDimensions(sha1 string) (w int64, h int64, err error) {
 	err = db.QueryRow(`SELECT width, height FROM image WHERE sha1 = ?`,
 		sha1).Scan(&w, &h)
@@ -1182,6 +1232,9 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 
 var hashRE = regexp.MustCompile(`^/.*?/([0-9a-f]{40})$`)
 var staticHandler http.Handler
+var webSettings struct {
+	Local bool `json:"local"`
+}
 
 var page = template.Must(template.New("/").Parse(`<!DOCTYPE html><html><head>
 	<title>Gallery</title>
@@ -1190,6 +1243,7 @@ var page = template.Must(template.New("/").Parse(`<!DOCTYPE html><html><head>
 	<link rel=stylesheet href=style.css>
 </head><body>
 	<noscript>This is a web application, and requires Javascript.</noscript>
+	<script>let settings = {{ . }}</script>
 	<script src=mithril.js></script>
 	<script src=gallery.js></script>
 </body></html>`))
@@ -1199,7 +1253,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		staticHandler.ServeHTTP(w, r)
 		return
 	}
-	if err := page.Execute(w, nil); err != nil {
+	if err := page.Execute(w, &webSettings); err != nil {
 		log.Println(err)
 	}
 }
@@ -1222,6 +1276,8 @@ func handleThumbs(w http.ResponseWriter, r *http.Request) {
 
 // cmdWeb runs a web UI against GD on ADDRESS.
 func cmdWeb(fs *flag.FlagSet, args []string) error {
+	local := fs.Bool(
+		"local", false, "enable features appropriate for running locally")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -1233,6 +1289,7 @@ func cmdWeb(fs *flag.FlagSet, args []string) error {
 	}
 
 	address := fs.Arg(1)
+	webSettings.Local = *local
 
 	// This separation is not strictly necessary,
 	// but having an elementary level of security doesn't hurt either.
@@ -1245,6 +1302,7 @@ func cmdWeb(fs *flag.FlagSet, args []string) error {
 	http.HandleFunc("/api/tags", handleAPITags)
 	http.HandleFunc("/api/duplicates", handleAPIDuplicates)
 	http.HandleFunc("/api/orphans", handleAPIOrphans)
+	http.HandleFunc("/api/open", handleAPIOpen)
 	http.HandleFunc("/api/info", handleAPIInfo)
 	http.HandleFunc("/api/similar", handleAPISimilar)
 	http.HandleFunc("/api/search", handleAPISearch)

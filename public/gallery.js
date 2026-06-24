@@ -468,6 +468,11 @@ let ViewBarPath = {
 let ViewBar = {
 	view(vnode) {
 		return m('.viewbar', [
+			settings.local ? m('p', [
+				m('button', {onclick: () => {
+					call('open', {sha1: ViewModel.sha1})
+				}}, "Open outside the browser"),
+			]) : undefined,
 			m('h2', "Locations"),
 			m('ul', ViewModel.paths.map(path =>
 				m('li', m(ViewBarPath, {path})))),
