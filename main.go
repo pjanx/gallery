@@ -2495,7 +2495,7 @@ func makeThumbnail(load bool, pathImage, pathThumb string) (
 	// This is still too much, but it will be effective enough.
 	memoryLimit := strconv.FormatInt(
 		int64(C.sysconf(C._SC_PHYS_PAGES)*C.sysconf(C._SC_PAGE_SIZE))/
-			int64(len(taskSemaphore)), 10)
+			int64(cap(taskSemaphore)), 10)
 
 	// Create a normalized thumbnail. Since we don't particularly need
 	// any complex processing, such as surrounding metadata,
