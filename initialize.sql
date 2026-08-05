@@ -104,3 +104,37 @@ CREATE TABLE IF NOT EXISTS tag_assignment(
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS tag_assignment__tag ON tag_assignment(tag);
+
+--
+
+CREATE VIEW IF NOT EXISTS image_with_metadata AS
+SELECT
+	i.*,
+	(
+		-- As in getImagePaths, with the sha1 injected from another field
+		WITH RECURSIVE paths(parent, path) AS (
+			SELECT parent, name FROM node WHERE sha1 = i.sha1
+			UNION ALL
+			SELECT n.parent, n.name || '/' || p.path
+			FROM node AS n JOIN paths AS p ON n.id = p.parent
+		)
+		SELECT json_group_array(path ORDER BY path)
+		FROM paths WHERE parent IS NULL
+	) AS paths,
+	(
+		-- As in getImageTags, with the sha1 injected from another field,
+		-- and grouped into JSON as (tag space -> tag name -> weight)
+		SELECT json_group_object(space, json(tags))
+		FROM (
+			SELECT
+				ts.name AS space,
+				json_group_object(t.name, ta.weight ORDER BY t.name) AS tags
+			FROM tag_assignment AS ta
+			JOIN tag AS t ON t.id = ta.tag
+			JOIN tag_space AS ts ON ts.id = t.space
+			WHERE ta.sha1 = i.sha1
+			GROUP BY ts.id
+			ORDER BY ts.name
+		)
+	) AS tags
+FROM image AS i;

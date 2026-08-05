@@ -793,12 +793,6 @@ func handleAPIOpen(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "no launcher", http.StatusInternalServerError)
 }
 
-func getImageDimensions(sha1 string) (w int64, h int64, err error) {
-	err = db.QueryRow(`SELECT width, height FROM image WHERE sha1 = ?`,
-		sha1).Scan(&w, &h)
-	return
-}
-
 func getImagePaths(sha1 string) (paths []string, err error) {
 	rows, err := db.Query(`WITH RECURSIVE paths(parent, path) AS (
 		SELECT parent, name AS path FROM node WHERE sha1 = ?
@@ -862,15 +856,14 @@ func handleAPIInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var result struct {
-		Width  int64                         `json:"width"`
-		Height int64                         `json:"height"`
-		Paths  []string                      `json:"paths"`
-		Tags   map[string]map[string]float32 `json:"tags"`
-	}
-
-	var err error
-	result.Width, result.Height, err = getImageDimensions(params.SHA1)
+	// Let's not build JSON manually if SQLite can do this for us.
+	var (
+		width, height int64
+		paths, tags   []byte
+	)
+	err := db.QueryRow(`SELECT width, height, paths, tags
+		FROM image_with_metadata WHERE sha1 = ?`, params.SHA1).
+		Scan(&width, &height, &paths, &tags)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -879,15 +872,16 @@ func handleAPIInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result.Paths, err = getImagePaths(params.SHA1)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	result.Tags, err = getImageTags(params.SHA1)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	result := struct {
+		Width  int64           `json:"width"`
+		Height int64           `json:"height"`
+		Paths  json.RawMessage `json:"paths"`
+		Tags   json.RawMessage `json:"tags"`
+	}{
+		Width:  width,
+		Height: height,
+		Paths:  json.RawMessage(paths),
+		Tags:   json.RawMessage(tags),
 	}
 	if err := json.NewEncoder(w).Encode(result); err != nil {
 		log.Println(err)
