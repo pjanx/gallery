@@ -369,8 +369,9 @@ func handleAPIBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var result struct {
-		Subdirectories []string   `json:"subdirectories"`
-		Entries        []webEntry `json:"entries"`
+		Subdirectories []string                   `json:"subdirectories"`
+		Entries        []webEntry                 `json:"entries"`
+		Related        map[string][]webTagRelated `json:"related"`
 	}
 
 	tx, err := db.Begin()
@@ -396,6 +397,16 @@ func handleAPIBrowse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	cte := fmt.Sprintf(`WITH matches(sha1) AS (
+		SELECT sha1 FROM node WHERE parent = %d AND sha1 IS NOT NULL
+	)`, parent)
+	result.Related, err = getTagRelated(tx, cte, len(result.Entries))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if err := json.NewEncoder(w).Encode(result); err != nil {
 		log.Println(err)
 	}

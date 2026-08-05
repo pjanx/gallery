@@ -123,6 +123,7 @@ let BrowseModel = {
 	path: undefined,
 	subdirectories: [],
 	entries: [],
+	related: {},
 	collator: new Intl.Collator(undefined, {numeric: true}),
 
 	async reload(path) {
@@ -130,12 +131,14 @@ let BrowseModel = {
 			this.path = path
 			this.subdirectories = []
 			this.entries = []
+			this.related = {}
 		}
 
 		let resp = await call('browse', {path})
 		this.subdirectories = resp.subdirectories
 		this.entries = resp.entries.sort((a, b) =>
 			this.collator.compare(a.name, b.name))
+		this.related = resp.related
 	},
 
 	joinPath(parent, child) {
@@ -222,6 +225,7 @@ let Browse = {
 						.map(link => m(BrowseBarLink, {link}))),
 				]),
 				m(BrowseView),
+				m('.viewbar', m(SearchRelated, {related: BrowseModel.related})),
 			]),
 		])
 	},
@@ -614,13 +618,14 @@ let SearchModel = {
 
 let SearchRelated = {
 	view(vnode) {
-		return Object.entries(SearchModel.related)
+		return Object.entries(vnode.attrs.related)
 			.sort((a, b) => a[0].localeCompare(b[0]))
 			.map(([space, tags]) => m('details[open]', [
 				m('summary', m('h2',
 					m(m.route.Link, {href: `/tags/${space}`}, space))),
 				m('ul.tags', tags
-					.sort((a, b) => (b.score - a.score))
+					.sort((a, b) => (b.score - a.score) ||
+						a.tag.localeCompare(b.tag))
 					.map(({tag, score}) =>
 						m(ScoredTag, {space, tagname: tag, score}))),
 			]))
@@ -659,7 +664,7 @@ let Search = {
 						onchange: event => m.route.set(
 							`/search/:key`, {key: event.target.value}),
 					}),
-					m(SearchRelated),
+					m(SearchRelated, {related: SearchModel.related}),
 				]),
 				m(SearchView),
 			]),
