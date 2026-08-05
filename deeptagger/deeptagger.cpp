@@ -1,6 +1,9 @@
 #include <getopt.h>
 #include <Magick++.h>
 #include <onnxruntime_cxx_api.h>
+#ifdef __linux__
+#include <dlfcn.h>
+#endif
 #ifdef __APPLE__
 #include <coreml_provider_factory.h>
 #endif
@@ -407,6 +410,12 @@ add_providers(Ort::SessionOptions &options)
 
 	// See CUDA-ExecutionProvider.html for documentation.
 	if (providers.count("CUDAExecutionProvider")) {
+#ifdef __linux__
+		// Training-enabled ONNX Runtime 1.28 does not seem to try to resolve
+		// some symbols through cudnn_stub.cc.  Giving up and hardcoding:
+		(void) dlopen("libcudnn.so.9", RTLD_NOW | RTLD_GLOBAL);
+#endif
+
 		OrtCUDAProviderOptionsV2* cuda_options = nullptr;
 		Ort::ThrowOnError(api.CreateCUDAProviderOptions(&cuda_options));
 		auto [keys, values] = unpack_options("CUDAExecutionProvider");
