@@ -747,6 +747,10 @@ main(int argc, char *argv[])
 		? ORT_LOGGING_LEVEL_VERBOSE
 		: ORT_LOGGING_LEVEL_WARNING;
 
+	// Not all builds collect and send telemetry, though the official ones do.
+	// Ort::Env::DisableTelemetryEvents() only prevents a subset of telemetry.
+	setenv("ORT_DISABLE_TELEMETRY", "1", true);
+
 	// Creating an environment before initializing providers in order to avoid:
 	// "Attempt to use DefaultLogger but none has been registered."
 	Ort::Env env(logging, invocation_name);
