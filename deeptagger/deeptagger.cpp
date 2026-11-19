@@ -214,10 +214,10 @@ load(const std::string filename,
 		adjusted.greater(true);
 		break;
 	case Config::Pad::STRETCH:
-		adjusted.aspect(false);
+		adjusted.aspect(true);
 	}
 
-	image.resize(adjusted, Magick::LanczosFilter);
+	image.resize(adjusted, Magick::TriangleFilter);
 
 	// The GraphicsMagick API doesn't offer any good options.
 	if (config.pad == Config::Pad::EDGE) {
